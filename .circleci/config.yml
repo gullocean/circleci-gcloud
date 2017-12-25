@@ -1,0 +1,81 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      # specify the version you desire here
+      - image: circleci/node:7.10
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/mongo:3.4.4
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run: yarn install
+
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+      # run tests!
+      # - run: yarn test
+
+  deploy:
+    machine: true
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      - run:
+          name: Configure GCloud Deployer
+          command: |
+            echo $GCP_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+            gcloud auth activate-service-account "${GCLOUD_ACCT}" --key-file="${HOME}/gcloud-service-key.json"
+            gcloud config set project $GCLOUD_PROJECT
+
+      - deploy:
+          name: Deploy to GCloud
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "develop" ]; then
+              echo "Deploying to Dev!!!"
+              gcloud compute ssh $DEV_INSTANCE --zone=$GCLOUD_ZONE --command="echo `base64 -w0 ./.circleci/deploy.sh` | base64 -d | sudo bash -s 'develop' '${CIRCLE_SHA1}'"
+            elif [ "${CIRCLE_BRANCH}" == "staging" ]; then
+              echo "Deploying to Staging!!!"
+              gcloud compute ssh $STAGING_INSTANCE --zone=$GCLOUD_ZONE --command="echo `base64 -w0 ./.circleci/deploy.sh` | base64 -d | sudo bash -s 'staging' '${CIRCLE_SHA1}'"
+            elif [ "${CIRCLE_BRANCH}" == "master" ]; then
+              echo "Deploying to Production!!!"
+              gcloud compute ssh $PROD_INSTANCE --zone=$GCLOUD_ZONE --command="echo `base64 -w0 ./.circleci/deploy.sh` | base64 -d | sudo bash -s 'master' '${CIRCLE_SHA1}'"
+            fi
+
+workflows:
+  version: 2
+
+  build-deploy:
+    jobs:
+      - build
+
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - master

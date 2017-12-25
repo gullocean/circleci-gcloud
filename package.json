@@ -1,0 +1,19 @@
+{
+  "name": "circleci-gcloud",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "exit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gullocean/circleci-gcloud.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gullocean/circleci-gcloud/issues"
+  },
+  "homepage": "https://github.com/gullocean/circleci-gcloud#readme"
+}
