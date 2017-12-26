@@ -50,20 +50,13 @@ jobs:
             echo $GCP_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
             gcloud auth activate-service-account "${GCLOUD_ACCT}" --key-file="${HOME}/gcloud-service-key.json"
             gcloud config set project $GCLOUD_PROJECT
+            gcloud compute config-ssh --quiet --project="${GCLOUD_PROJECT}"
 
       - deploy:
           name: Deploy to GCloud
           command: |
-            if [ "${CIRCLE_BRANCH}" == "develop" ]; then
-              echo "Deploying to Dev!!!"
-              gcloud compute ssh $DEV_INSTANCE --zone=$GCLOUD_ZONE --command="echo `base64 -w0 ./.circleci/deploy.sh` | base64 -d | sudo bash -s 'develop' '${CIRCLE_SHA1}'"
-            elif [ "${CIRCLE_BRANCH}" == "staging" ]; then
-              echo "Deploying to Staging!!!"
-              gcloud compute ssh $STAGING_INSTANCE --zone=$GCLOUD_ZONE --command="echo `base64 -w0 ./.circleci/deploy.sh` | base64 -d | sudo bash -s 'staging' '${CIRCLE_SHA1}'"
-            elif [ "${CIRCLE_BRANCH}" == "master" ]; then
-              echo "Deploying to Production!!!"
-              gcloud compute ssh $PROD_INSTANCE --zone=$GCLOUD_ZONE --command="echo `base64 -w0 ./.circleci/deploy.sh` | base64 -d | sudo bash -s 'master' '${CIRCLE_SHA1}'"
-            fi
+            echo "Deploying to Production!!!"
+            ssh "$GCLOUD_INSTANCE.$GCLOUD_ZONE.$GCLOUD_PROJECT" "echo `base64 -w0 ./.circleci/deploy.sh` | base64 -d | sudo bash -s '${CIRCLE_BRANCH}' '${CIRCLE_SHA1}'"
 
 workflows:
   version: 2
